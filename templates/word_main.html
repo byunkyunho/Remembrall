@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="{{ url_for('static', filename='js/open_dictionary.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/arrange_words.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/add_favorite.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/visible_word.js') }}"></script>
+    <script src="{{ url_for('static', filename='css/word_main.css') }}"></script>
+    <script src="//code.jquery.com/jquery-3.3.1.min.js"></script>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영단어 외우기</title>
+    <div style="position:fixed;right:10px;bottom:30px;">
+        <label style="font-size:20p x"><input  style="width: 20px;height:20px;" type="checkbox" id='visible_eng' onclick="visible_word('visible_eng')"> 영어 </label>
+        <label style="font-size:20px"><input style="width: 20px;height:20px;" type="checkbox" id="visible_mean" onclick="visible_word('visible_mean')"> 뜻 </label>
+    </div>
+    <div  style="position:fixed;right:5px">
+        <label style="font-size:20px"><input style="width: 20px;height:20px;" name="arranage" type="radio" id='arrange_by_date' onclick="arrange_words('date')"> 날짜순 </label>
+        <label style="font-size:20px"><input style="width: 20px;height:20px;" name="arranage" type="radio" checked="checked" id='arrange_by_spell' onclick="arrange_words('spell')"> 철자순 </label>
+    </div>
+    <script>
+        load_data = {{word_list|tojson}}
+        word_by_date = load_data['by_date']
+        word_by_spell = load_data['by_spell']
+    </script>
+</head>
+<body>
+    <center>
+        <h1 style="margin-bottom:10px;margin-top:10px">{{word_list['by_spell'].items()|length}}</h1>
+        
+        <form method="post" action="/word/{{user_code}}" >
+            <div>
+                <span>
+                    <input type="text" placeholder='영어단어' name='new_word' id='new_word' style='width:20%;margin-top:15px;'>
+                </span>
+                <span>
+                    <input type="text" placeholder='뜻 (빈칸은 자동 입력)' name='word_mean' id= 'word_mean' style='width:20%;margin-top: 15px;'>
+                </span>
+                <span class='button'>
+                    <button style='width:15%' type="submit">추가</button>
+                </span>
+            </div>
+            <div style='margin-bottom: 5px;'>
+                <span>
+                    <input type="text" placeholder='삭제할 단어' name = 'delete_word' id='delete_word' style='width:42%;margin-top: 10px;'>
+                </span>
+                <span class='button'>
+                    <button style='width:15%' type="submit">삭제</button>
+                </span>
+            </div>
+        </form>
+        <div id='favorite_word'>
+            {% for word in word_list['by_spell'].items() %}
+                {% if word[1]['favorite'] %} 
+                    <div id="{{word[0]}}" style="display:block;margin-top: 30px;" class='word' style="margin-top: 30px;">
+                        <h2 onclick="open_dictionary('{{word[0]}}', 'en')" id='eng' style="display:inline">{{word[0]}}</h2>
+                        <h2 id='middle_dash' style="margin-left:5px;margin-right:5px;display:inline">-</h2>
+                        <h2 onclick="open_dictionary('{{word[1]['mean']}}', 'kor')" id='mean' style="display:inline;font-size:23px" >{{word[1]['mean']}}</h2>
+                        <button  onclick="set_favorite_word('{{user_code}}' ,'{{word[0]}}', true)" style='float:left;'>즐겨찾기 삭제</button>
+                    </div>
+                {% else %}
+                    <div id="{{word[0]}}" style="display:none; margin-top: 30px;" class='word' style="margin-top: 30px;">
+                        <h2 onclick="open_dictionary('{{word[0]}}', 'en')" id='eng' style="display:inline">{{word[0]}}</h2>
+                        <h2 id='middle_dash' style="margin-left:5px;margin-right:5px;display:inline">-</h2>
+                        <h2 onclick="open_dictionary('{{word[1]['mean']}}', 'kor')" id='mean' style="display:inline;font-size:23px" >{{word[1]['mean']}}</h2>
+                        <button onclick="set_favorite_word('{{user_code}}' ,'{{word[0]}}', true)" style='float:left;'>즐겨찾기 삭제</button>
+                    </div>     
+                {% endif %}
+            {% endfor %}
+            <h2 style="background-color:yellow" >즐겨찾기</h1>
+        </div>
+        <div id='word_by_spell'>
+            {% for word in word_list['by_spell'].items() %}
+                {% if word[0] in added_word %}
+                    <div id="{{word[0]}}" class='word' style="margin-top: 30px;">
+                        <h2 onclick="open_dictionary('{{word[0]}}', 'en')" id='eng' style="display:inline; color:blue">{{word[0]}}</h2>
+                        <h2 id='middle_dash' style="display:inline" > - </h2>
+                        <h2 onclick="open_dictionary('{{word[1]['mean']}}', 'kor')" id='mean' style="display:inline; color:blue;font-size:23px" >{{word[1]['mean']}}</h2>
+                        <button onclick="set_favorite_word('{{user_code}}' ,'{{word[0]}}', false)" style='float:left;'>즐겨찾기</button>
+                    </div>
+                {% endif %}
+            {% endfor %}
+            {% for word in word_list['by_spell'].items() %}
+                <div id="{{word[0]}}" class='word' style="margin-top: 30px;">
+                    {% if not word[0] in added_word and not word[0] == deleted_word and not word[0] == changed_word %}
+                        <h2 onclick="open_dictionary('{{word[0]}}', 'en')" id='eng' style="display:inline">{{word[0]}}</h2>
+                        <h2 id='middle_dash' style="margin-left:5px;margin-right:5px;display:inline">-</h2>
+                        <h2 onclick="open_dictionary('{{word[1]['mean']}}', 'kor')" id='mean' style="display:inline;font-size:23px" >{{word[1]['mean']}}</h2>
+                        <button onclick="set_favorite_word('{{user_code}}' ,'{{word[0]}}', false)" style='float:left;'>즐겨찾기</button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <div id='word_by_date' >
+            {% for date, words in word_list['by_date'].items() %}
+                <h2 style="background-color:chartreuse" >{{date}}</h1>
+                {% for word in words %}
+                    <div id="{{word['word']}}" class='word' style="margin-top: 30px;font-size">
+                        <h2 onclick="open_dictionary('{{word['word']}}','en')" id='eng' style="display:inline">{{word['word']}}</h2>
+                        <h2 id='middle_dash' style="margin-left:5px;margin-right:5px;display:inline">-</h2>
+                        <h2 onclick="open_dictionary('{{word['mean']}}', 'kor')" id='mean' style="display:inline;font-size:23px" >{{word['mean']}}</h2>
+                        <button onclick="set_favorite_word('{{user_code}}' ,'{{word['word']}}', false)" style='float:left;'>즐겨찾기</button>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </center> 
+    <script>
+        document.querySelector("#visible_mean").checked = true;
+        document.querySelector("#visible_eng").checked = true;
+        document.querySelector('#word_by_spell').style.display = 'block'
+        document.querySelector('#word_by_date').style.display = 'none'
+    </script>
+</body>
+</html>
